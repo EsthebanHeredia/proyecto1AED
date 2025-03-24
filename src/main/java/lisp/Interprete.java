@@ -409,3 +409,107 @@ public class Interprete {
     /**
      * Ejecuta el intérprete en un bucle leer-evaluar-imprimir (REPL).
      */
+
+public void repl() {
+        salida.println("Intérprete LISP");
+        salida.println("Escribe expresiones LISP para evaluar, Ctrl+D para salir");
+
+        while (true) {
+            try {
+                salida.print("> ");
+                salida.flush();
+
+                ExpresionLisp expr = analizador.analizar();
+                if (expr == null) {
+                    break; // Fin de entrada
+                }
+
+                ExpresionLisp resultado = evaluar(expr, contextoGlobal);
+
+                // Only print the result if it's not from an IMPRIMIR operation
+                if (!(expr.primero() instanceof simbolo &&
+                        expr.primero() == simbolo.IMPRIMIR)) {
+                    salida.print("=> ");
+                    resultado.imprimir(salida);
+                    salida.println();
+                }
+            } catch (ExcepcionLisp e) {
+                salida.println("Error: " + e.getMessage());
+            }
+        }
+
+        salida.println("¡Adiós!");
+    }
+
+    /**
+     * Evalúa una expresión LISP de cadena.
+     *
+     * @param expr La expresión a evaluar como cadena
+     * @return El resultado de evaluar la expresión
+     * @throws ExcepcionLisp si hay un error durante la evaluación
+     */
+    public ExpresionLisp evaluar(String expr) throws ExcepcionLisp, ExcepcionAtomo, ExcepcionContexto {
+        lisp.analizador analizadorTemp = new analizador(new StringReader(expr));
+        ExpresionLisp s = analizadorTemp.analizar();
+        if (s == null) {
+            throw new ExcepcionLisp("Expresión vacía");
+        }
+        return evaluar(s, contextoGlobal);
+    }
+
+    /**
+     * Clase interna para representar funciones definidas por el usuario.
+     */
+    private class Funcion extends ExpresionLisp {
+        private final ExpresionLisp parametros;
+        private final ExpresionLisp cuerpo;
+        private final contexto cierreLexico;
+
+        public Funcion(ExpresionLisp parametros, ExpresionLisp cuerpo, contexto cierreLexico) {
+            this.parametros = parametros;
+            this.cuerpo = cuerpo;
+            this.cierreLexico = cierreLexico;
+        }
+
+        public ExpresionLisp aplicar(List<ExpresionLisp> args, Interprete interprete) throws ExcepcionLisp, ExcepcionAtomo, ExcepcionContexto {
+            // Convierte la lista de args a una lista LISP adecuada
+            ExpresionLisp listaArgs = simbolo.NULO;
+            for (int i = args.size() - 1; i >= 0; i--) {
+                listaArgs = new par(args.get(i), listaArgs);
+            }
+
+            // Crea un nuevo contexto extendido con los parámetros enlazados a los argumentos
+            contexto nuevoContexto = cierreLexico.extender(parametros, listaArgs);
+
+            // Evalúa el cuerpo de la función en el nuevo contexto
+            return interprete.evaluar(cuerpo, nuevoContexto);
+        }
+
+        @Override
+        public ExpresionLisp primero() throws ExcepcionAtomo {
+            throw new ExcepcionAtomo("No se puede obtener el primer elemento de una función");
+        }
+
+        @Override
+        public ExpresionLisp resto() throws ExcepcionAtomo {
+            throw new ExcepcionAtomo("No se puede obtener el resto de una función");
+        }
+
+        @Override
+        public void imprimir(PrintStream salida) {
+            salida.print("#<FUNCION>");
+        }
+    }
+
+    /**
+     * Método principal.
+     */
+    public static void main(String[] args) {
+        try {
+            Interprete interprete = new Interprete();
+            interprete.repl();
+        } catch (ExcepcionLisp e) {
+            System.err.println("Error al iniciar el intérprete: " + e.getMessage());
+        }
+    }
+}
