@@ -362,3 +362,50 @@ public class Interprete {
             throw new ExcepcionLisp("No se puede aplicar: " + funcion);
         }
     }
+    private contexto crearContextoGlobal() {
+        contexto ctx = new contexto();
+
+        // Definir constantes
+        ctx.establecer(simbolo.NULO, simbolo.NULO);
+        ctx.establecer(simbolo.VERDADERO, simbolo.VERDADERO);
+
+        // Definir funciones incorporadas
+        ctx.establecer(simbolo.PRIMERO, simbolo.PRIMERO);
+        ctx.establecer(simbolo.RESTO, simbolo.RESTO);
+        ctx.establecer(simbolo.CONSTRUIR, simbolo.CONSTRUIR);
+        ctx.establecer(simbolo.LISTA, simbolo.LISTA);
+        ctx.establecer(simbolo.ES_ATOMO, simbolo.ES_ATOMO);
+        ctx.establecer(simbolo.ES_IGUAL_REF, simbolo.ES_IGUAL_REF);
+        ctx.establecer(simbolo.ES_IGUAL, simbolo.ES_IGUAL);
+        ctx.establecer(simbolo.ES_LISTA, simbolo.ES_LISTA);
+        ctx.establecer(simbolo.IMPRIMIR, simbolo.IMPRIMIR);
+        ctx.establecer(simbolo.DEFUN, simbolo.DEFUN);  // Changed from DEFINIR_FUNCION to DEFUN
+
+        // Definir operaciones con cadenas
+        ctx.establecer(simbolo.CONCATENAR, simbolo.CONCATENAR);
+        ctx.establecer(simbolo.LONGITUD_CADENA, simbolo.LONGITUD_CADENA);
+
+        // Definir operadores aritméticos - both forms
+        ctx.establecer(simbolo.SUMA, simbolo.SUMA);
+        ctx.establecer(simbolo.SUMAR, simbolo.SUMAR);
+        ctx.establecer(simbolo.RESTA, simbolo.RESTA);
+        ctx.establecer(simbolo.RESTAR, simbolo.RESTAR);
+        ctx.establecer(simbolo.MULTIPLICA, simbolo.MULTIPLICA);
+        ctx.establecer(simbolo.MULTIPLICAR, simbolo.MULTIPLICAR);
+        ctx.establecer(simbolo.DIVIDE, simbolo.DIVIDE);
+        ctx.establecer(simbolo.DIVIDIR, simbolo.DIVIDIR);
+
+        // Definir operadores de comparación - both forms
+        ctx.establecer(simbolo.MENOR, simbolo.MENOR);
+        ctx.establecer(simbolo.MENOR_QUE, simbolo.MENOR_QUE);
+        ctx.establecer(simbolo.MAYOR, simbolo.MAYOR);
+        ctx.establecer(simbolo.MAYOR_QUE, simbolo.MAYOR_QUE);
+        ctx.establecer(simbolo.IGUAL, simbolo.ES_IGUAL);
+        ctx.establecer(simbolo.ES_IGUAL_VALOR, simbolo.ES_IGUAL_VALOR);
+
+        return ctx;
+    }
+
+    /**
+     * Ejecuta el intérprete en un bucle leer-evaluar-imprimir (REPL).
+     */
