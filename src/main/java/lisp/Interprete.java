@@ -182,3 +182,183 @@ public class Interprete {
 
         return false; // Tipos diferentes
     }
+
+    private ExpresionLisp aplicar(ExpresionLisp funcion, List<ExpresionLisp> args) throws ExcepcionLisp, ExcepcionAtomo, ExcepcionContexto {
+        if (funcion instanceof Funcion func) {
+            // Función definida por el usuario
+            return func.aplicar(args, this);
+        } else if (funcion.esSimbolo()) {
+            // Función incorporada
+            simbolo op = (simbolo) funcion;
+
+            if (op == simbolo.PRIMERO) {
+                verificarCantidadArgumentos(args, 1);
+                return args.get(0).primero();
+            } else if (op == simbolo.RESTO) {
+                verificarCantidadArgumentos(args, 1);
+                return args.get(0).resto();
+            } else if (op == simbolo.CONSTRUIR) {
+                verificarCantidadArgumentos(args, 2);
+                return new par(args.get(0), args.get(1));
+            } else if (op == simbolo.LISTA) {
+                // Convierte lista de args a una lista LISP adecuada
+                ExpresionLisp resultado = simbolo.NULO;
+                for (int i = args.size() - 1; i >= 0; i--) {
+                    resultado = new par(args.get(i), resultado);
+                }
+                return resultado;
+            } else if (op == simbolo.ES_IGUAL_REF) {
+                verificarCantidadArgumentos(args, 2);
+                return args.get(0) == args.get(1) ? simbolo.VERDADERO : simbolo.NULO;
+            } else if (op == simbolo.ES_IGUAL || op == simbolo.IGUAL || op == simbolo.ES_IGUAL_VALOR) {
+                verificarCantidadArgumentos(args, 2);
+                return esIgual(args.get(0), args.get(1)) ? simbolo.VERDADERO : simbolo.NULO;
+            } else if (op == simbolo.ES_ATOMO) {
+                verificarCantidadArgumentos(args, 1);
+                return args.get(0).esAtomo() ? simbolo.VERDADERO : simbolo.NULO;
+            } else if (op == simbolo.ES_LISTA) {
+                verificarCantidadArgumentos(args, 1);
+                ExpresionLisp arg = args.get(0);
+
+                // NULO is a list
+                if (arg == simbolo.NULO) {
+                    return simbolo.VERDADERO;
+                }
+
+                // Only pairs can be lists
+                if (arg.esAtomo()) {
+                    return simbolo.NULO;
+                }
+
+                // Check if it's a proper list
+                return ((par) arg).esLista() ? simbolo.VERDADERO : simbolo.NULO;
+            } else if (op == simbolo.CONCATENAR) {
+                StringBuilder resultado = new StringBuilder();
+                for (ExpresionLisp arg : args) {
+                    if (arg.esCadena()) {
+                        resultado.append(((cadena) arg).obtenerValor());
+                    } else {
+                        StringBuilder temp = new StringBuilder();
+                        PrintStream ps = new PrintStream(System.out) {
+                            @Override
+                            public void print(String s) {
+                                temp.append(s);
+                            }
+                            @Override
+                            public void print(long l) {
+                                temp.append(l);
+                            }
+                        };
+                        arg.imprimir(ps);
+                        resultado.append(temp);
+                    }
+                }
+                return new cadena(resultado.toString());
+            } else if (op == simbolo.LONGITUD_CADENA) {
+                verificarCantidadArgumentos(args, 1);
+                if (!args.get(0).esCadena()) {
+                    throw new ExcepcionLisp("LONGITUD_CADENA requiere un argumento de tipo cadena");
+                }
+                return numero.obtenerValor(((cadena) args.get(0)).obtenerValor().length());
+            } else if (op == simbolo.SUMA || op == simbolo.SUMAR) {
+                long resultado = 0;
+                for (ExpresionLisp arg : args) {
+                    if (!arg.esNumero()) {
+                        throw new ExcepcionLisp("+ requiere argumentos numéricos");
+                    }
+                    resultado += ((numero) arg).obtenerValor();
+                }
+                return numero.obtenerValor(resultado);
+            } else if (op == simbolo.RESTA || op == simbolo.RESTAR) {
+                if (args.size() == 0) {
+                    throw new ExcepcionLisp("- requiere al menos un argumento");
+                }
+
+                if (!args.get(0).esNumero()) {
+                    throw new ExcepcionLisp("- requiere argumentos numéricos");
+                }
+
+                if (args.size() == 1) {
+                    // Menos unario
+                    return numero.obtenerValor(-((numero) args.get(0)).obtenerValor());
+                }
+
+                // Menos binario
+                long resultado = ((numero) args.get(0)).obtenerValor();
+                for (int i = 1; i < args.size(); i++) {
+                    if (!args.get(i).esNumero()) {
+                        throw new ExcepcionLisp("- requiere argumentos numéricos");
+                    }
+                    resultado -= ((numero) args.get(i)).obtenerValor();
+                }
+                return numero.obtenerValor(resultado);
+            } else if (op == simbolo.MULTIPLICA || op == simbolo.MULTIPLICAR) {
+                long resultado = 1;
+                for (ExpresionLisp arg : args) {
+                    if (!arg.esNumero()) {
+                        throw new ExcepcionLisp("* requiere argumentos numéricos");
+                    }
+                    resultado *= ((numero) arg).obtenerValor();
+                }
+                return numero.obtenerValor(resultado);
+            } else if (op == simbolo.DIVIDE || op == simbolo.DIVIDIR) {
+                if (args.size() == 0) {
+                    throw new ExcepcionLisp("/ requiere al menos un argumento");
+                }
+
+                if (!args.get(0).esNumero()) {
+                    throw new ExcepcionLisp("/ requiere argumentos numéricos");
+                }
+
+                if (args.size() == 1) {
+                    // Inversión
+                    long valor = ((numero) args.get(0)).obtenerValor();
+                    if (valor == 0) {
+                        throw new ExcepcionLisp("División por cero");
+                    }
+                    return numero.obtenerValor(1 / valor);
+                }
+
+                // División normal
+                long resultado = ((numero) args.get(0)).obtenerValor();
+                for (int i = 1; i < args.size(); i++) {
+                    if (!args.get(i).esNumero()) {
+                        throw new ExcepcionLisp("/ requiere argumentos numéricos");
+                    }
+                    long divisor = ((numero) args.get(i)).obtenerValor();
+                    if (divisor == 0) {
+                        throw new ExcepcionLisp("División por cero");
+                    }
+                    resultado /= divisor;
+                }
+                return numero.obtenerValor(resultado);
+            } else if (op == simbolo.MENOR || op == simbolo.MENOR_QUE) {
+                verificarCantidadArgumentos(args, 2);
+                if (!args.get(0).esNumero() || !args.get(1).esNumero()) {
+                    throw new ExcepcionLisp("< requiere argumentos numéricos");
+                }
+                long a = ((numero) args.get(0)).obtenerValor();
+                long b = ((numero) args.get(1)).obtenerValor();
+                return a < b ? simbolo.VERDADERO : simbolo.NULO;
+            } else if (op == simbolo.MAYOR || op == simbolo.MAYOR_QUE) {
+                verificarCantidadArgumentos(args, 2);
+                if (!args.get(0).esNumero() || !args.get(1).esNumero()) {
+                    throw new ExcepcionLisp("> requiere argumentos numéricos");
+                }
+                long a = ((numero) args.get(0)).obtenerValor();
+                long b = ((numero) args.get(1)).obtenerValor();
+                return a > b ? simbolo.VERDADERO : simbolo.NULO;
+            } else if (op == simbolo.IMPRIMIR) {
+                for (ExpresionLisp arg : args) {
+                    arg.imprimir(salida);
+                    salida.print(" ");
+                }
+                salida.println();
+                return simbolo.NULO;
+            } else {
+                throw new ExcepcionLisp("Función desconocida: " + op.obtenerNombre());
+            }
+        } else {
+            throw new ExcepcionLisp("No se puede aplicar: " + funcion);
+        }
+    }
