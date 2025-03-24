@@ -1,7 +1,11 @@
 package Excepciones;
 
-public class ExcepcionLisp {
+public class ExcepcionLisp extends Exception {
+    public ExcepcionLisp(String mensaje) {
+        super(mensaje);
+    }
 
-    //comentario de prueba
-
+    public ExcepcionLisp(String mensaje, Throwable causa) {
+        super(mensaje, causa);
+    }
 }
