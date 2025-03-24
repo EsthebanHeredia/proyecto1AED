@@ -6,19 +6,36 @@ import Excepciones.ExcepcionSimbolo;
 import java.io.*;
 
 /**
- * Analizador para expresiones LISP.
+ * Analizador sintáctico para expresiones LISP.
+ * Esta clase proporciona funcionalidad para analizar y convertir texto en expresiones LISP.
  */
 public class analizador {
+    /** El tokenizador que procesa la entrada */
     private final Tokenizador tokenizador;
 
+    /**
+     * Construye un nuevo analizador que lee de un flujo de entrada.
+     *
+     * @param entrada el flujo de entrada del cual leer las expresiones LISP
+     */
     public analizador(InputStream entrada) {
         this.tokenizador = new Tokenizador(new InputStreamReader(entrada));
     }
 
+    /**
+     * Construye un nuevo analizador que lee de un lector.
+     *
+     * @param lector el lector del cual leer las expresiones LISP
+     */
     public analizador(Reader lector) {
         this.tokenizador = new Tokenizador(lector);
     }
 
+    /**
+     * Construye un nuevo analizador que lee de un lector de cadenas.
+     *
+     * @param stringReader el lector de cadenas del cual leer las expresiones LISP
+     */
     public analizador(StringReader stringReader) {
         this.tokenizador = new Tokenizador(stringReader);
     }
@@ -32,26 +49,34 @@ public class analizador {
     public ExpresionLisp analizar() throws ExcepcionLisp {
         String token = tokenizador.siguienteToken();
         if (token == null) {
-            return null; // Fin de entrada
+            return null;
         }
-
         return analizarToken(token);
     }
 
+    /**
+     * Analiza un token específico y lo convierte en una expresión LISP.
+     *
+     * @param token el token a analizar
+     * @return la expresión LISP correspondiente al token
+     * @throws ExcepcionLisp si hay un error de sintaxis
+     */
     private ExpresionLisp analizarToken(String token) throws ExcepcionLisp {
         return switch (token) {
             case "(" -> analizarLista();
             case ")" -> throw new ExcepcionLisp("Paréntesis de cierre inesperado");
-            case "'" ->
-                // Abreviatura de cita: 'x => (CITAR x)
-                    new par(simbolo.CITAR, new par(analizar(), simbolo.NULO));
-            case "\"" ->
-                // Analizar cadena
-                    analizarCadena();
+            case "'" -> new par(simbolo.CITAR, new par(analizar(), simbolo.NULO));
+            case "\"" -> analizarCadena();
             default -> analizarAtomo(token);
         };
     }
 
+    /**
+     * Analiza una cadena de caracteres desde la entrada.
+     *
+     * @return la expresión LISP que representa la cadena
+     * @throws ExcepcionLisp si hay un error al leer la cadena
+     */
     private ExpresionLisp analizarCadena() throws ExcepcionLisp {
         StringBuilder sb = new StringBuilder();
         int c;
@@ -60,34 +85,36 @@ public class analizador {
         try {
             while ((c = tokenizador.lectorRaw().read()) != -1) {
                 char ch = (char) c;
-
                 if (escape) {
-                    // Manejar caracteres de escape
                     switch (ch) {
-                        case 'n': sb.append('\n'); break;
-                        case 't': sb.append('\t'); break;
-                        case 'r': sb.append('\r'); break;
-                        case '"': sb.append('"'); break;
-                        case '\\': sb.append('\\'); break;
-                        default: sb.append(ch);
+                        case 'n' -> sb.append('\n');
+                        case 't' -> sb.append('\t');
+                        case 'r' -> sb.append('\r');
+                        case '"' -> sb.append('"');
+                        case '\\' -> sb.append('\\');
+                        default -> sb.append(ch);
                     }
                     escape = false;
                 } else if (ch == '\\') {
                     escape = true;
                 } else if (ch == '"') {
-                    // Fin de cadena
                     return new cadena(sb.toString());
                 } else {
                     sb.append(ch);
                 }
             }
-
             throw new ExcepcionLisp("Cadena sin cerrar");
         } catch (IOException e) {
             throw new ExcepcionLisp("Error al leer cadena: " + e.getMessage());
         }
     }
 
+    /**
+     * Analiza una lista de expresiones LISP.
+     *
+     * @return la expresión LISP que representa la lista
+     * @throws ExcepcionLisp si hay un error de sintaxis
+     */
     private ExpresionLisp analizarLista() throws ExcepcionLisp {
         String token = tokenizador.siguienteToken();
         if (token == null) {
@@ -95,18 +122,16 @@ public class analizador {
         }
 
         if (token.equals(")")) {
-            return simbolo.NULO; // Lista vacía
+            return simbolo.NULO;
         }
 
         ExpresionLisp primero = analizarToken(token);
-
         token = tokenizador.siguienteToken();
         if (token == null) {
             throw new ExcepcionLisp("Fin de entrada inesperado, falta un paréntesis de cierre");
         }
 
         if (token.equals(".")) {
-            // Notación de par punteado
             ExpresionLisp resto = analizar();
             token = tokenizador.siguienteToken();
             if (!token.equals(")")) {
@@ -114,20 +139,24 @@ public class analizador {
             }
             return new par(primero, resto);
         } else {
-            // Lista regular
             tokenizador.devolver(token);
             ExpresionLisp resto = analizarLista();
             return new par(primero, resto);
         }
     }
 
+    /**
+     * Analiza un átomo (número o símbolo) desde un token.
+     *
+     * @param token el token a analizar
+     * @return la expresión LISP que representa el átomo
+     * @throws ExcepcionLisp si hay un error al crear el átomo
+     */
     private ExpresionLisp analizarAtomo(String token) throws ExcepcionLisp {
-        // Intenta analizar como número
         try {
             long valor = Long.parseLong(token);
             return numero.obtenerValor(valor);
         } catch (NumberFormatException e) {
-            // Si no es un número, es un símbolo
             try {
                 return simbolo.internamente(token);
             } catch (ExcepcionSimbolo e2) {
@@ -137,12 +166,19 @@ public class analizador {
     }
 
     /**
-     * Tokenizador para expresiones LISP.
+     * Clase interna que maneja la tokenización de la entrada.
      */
     private static class Tokenizador {
+        /** El lector que proporciona la entrada */
         private final BufferedReader lector;
+        /** Token guardado para devolución */
         private String tokenDevuelto = null;
 
+        /**
+         * Construye un nuevo tokenizador.
+         *
+         * @param lector el lector de entrada a utilizar
+         */
         public Tokenizador(Reader lector) {
             this.lector = lector instanceof BufferedReader ?
                     (BufferedReader) lector :
@@ -150,9 +186,9 @@ public class analizador {
         }
 
         /**
-         * Devuelve el siguiente token de la entrada.
+         * Obtiene el siguiente token de la entrada.
          *
-         * @return El siguiente token, o null al final de la entrada
+         * @return el siguiente token, o null si se alcanza el final de la entrada
          * @throws ExcepcionLisp si hay un error de E/S
          */
         public String siguienteToken() throws ExcepcionLisp {
@@ -164,28 +200,18 @@ public class analizador {
 
             try {
                 saltarEspaciosEnBlanco();
-
                 int c = lector.read();
-                if (c == -1) {
-                    return null; // Fin de entrada
-                }
+                if (c == -1) return null;
 
                 char ch = (char) c;
-
-                // Maneja tokens de un solo carácter
-                switch (ch) {
-                    case '(':
-                    case ')':
-                    case '\'':
-                    case '.', '"':
-                        return String.valueOf(ch);
-                    case ';':
-                        // Omitir comentario
-                        lector.readLine();
-                        return siguienteToken();
+                if (ch == '(' || ch == ')' || ch == '\'' || ch == '.' || ch == '"') {
+                    return String.valueOf(ch);
+                }
+                if (ch == ';') {
+                    lector.readLine();
+                    return siguienteToken();
                 }
 
-                // Maneja tokens de múltiples caracteres (símbolos y números)
                 StringBuilder sb = new StringBuilder();
                 sb.append(ch);
 
@@ -197,10 +223,7 @@ public class analizador {
                     c = lector.read();
                 }
 
-                if (c != -1) {
-                    lector.reset(); // Devuelve el delimitador
-                }
-
+                if (c != -1) lector.reset();
                 return sb.toString();
             } catch (IOException e) {
                 throw new ExcepcionLisp("Error de E/S: " + e.getMessage());
@@ -208,19 +231,28 @@ public class analizador {
         }
 
         /**
-         * Devuelve el lector subyacente para operaciones de lectura directa.
+         * Proporciona acceso al lector subyacente.
+         *
+         * @return el lector subyacente
          */
         public Reader lectorRaw() {
             return lector;
         }
 
         /**
-         * Devuelve un token para ser retornado en la próxima llamada a siguienteToken().
+         * Devuelve un token para ser procesado en la siguiente llamada.
+         *
+         * @param token el token a devolver
          */
         public void devolver(String token) {
             tokenDevuelto = token;
         }
 
+        /**
+         * Avanza el lector hasta encontrar un carácter que no sea espacio en blanco.
+         *
+         * @throws IOException si ocurre un error de E/S
+         */
         private void saltarEspaciosEnBlanco() throws IOException {
             lector.mark(1);
             int c = lector.read();
@@ -228,11 +260,15 @@ public class analizador {
                 lector.mark(1);
                 c = lector.read();
             }
-            if (c != -1) {
-                lector.reset();
-            }
+            if (c != -1) lector.reset();
         }
 
+        /**
+         * Verifica si un carácter es un delimitador en la sintaxis LISP.
+         *
+         * @param c el carácter a verificar
+         * @return true si el carácter es un delimitador
+         */
         private boolean esDelimitador(char c) {
             return Character.isWhitespace(c) || c == '(' || c == ')' || c == '\'' || c == ';' || c == '"';
         }

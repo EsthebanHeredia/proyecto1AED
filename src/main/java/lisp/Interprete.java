@@ -11,14 +11,21 @@ import java.util.List;
 
 /**
  * Intérprete de LISP simple.
+ * Esta clase implementa un intérprete básico para un subconjunto del lenguaje LISP,
+ * proporcionando funcionalidad para evaluar expresiones y mantener un entorno global.
  */
 public class Interprete {
+    /** El analizador sintáctico para procesar expresiones LISP */
     private final analizador analizador;
+    /** La salida donde se mostrarán los resultados */
     private final PrintStream salida;
+    /** El contexto global que mantiene las variables y funciones definidas */
     private final contexto contextoGlobal;
 
     /**
-     * Constructor del intérprete.
+     * Constructor del intérprete que usa la entrada y salida estándar.
+     *
+     * @throws ExcepcionLisp si hay un error al inicializar el intérprete
      */
     public Interprete() throws ExcepcionLisp {
         this(System.in, System.out);
@@ -27,8 +34,10 @@ public class Interprete {
     /**
      * Constructor del intérprete con entrada y salida personalizadas.
      *
-     * @param entrada La fuente de entrada
+     * @param entrada La fuente de entrada para las expresiones
      * @param salida La salida donde mostrar resultados
+     * @throws ExcepcionAtomo si hay un error con el manejo de átomos
+     * @throws ExcepcionLisp si hay un error al inicializar el intérprete
      */
     public Interprete(java.io.InputStream entrada, PrintStream salida) throws ExcepcionAtomo, ExcepcionLisp {
         this.analizador = new analizador(entrada);
@@ -43,6 +52,8 @@ public class Interprete {
      * @param ctx El contexto de evaluación
      * @return El resultado de evaluar la expresión
      * @throws ExcepcionLisp si hay un error durante la evaluación
+     * @throws ExcepcionAtomo si hay un error con el manejo de átomos
+     * @throws ExcepcionContexto si hay un error con el contexto
      */
     public ExpresionLisp evaluar(ExpresionLisp expr, contexto ctx) throws ExcepcionLisp, ExcepcionAtomo, ExcepcionContexto {
         // Autoevaluación para tipos atómicos
@@ -465,12 +476,29 @@ public void repl() {
         private final ExpresionLisp cuerpo;
         private final contexto cierreLexico;
 
+        /**
+         * Constructor de una función definida por el usuario.
+         *
+         * @param parametros los parámetros formales de la función
+         * @param cuerpo el cuerpo de la función
+         * @param cierreLexico el contexto donde se definió la función
+         */
         public Funcion(ExpresionLisp parametros, ExpresionLisp cuerpo, contexto cierreLexico) {
             this.parametros = parametros;
             this.cuerpo = cuerpo;
             this.cierreLexico = cierreLexico;
         }
 
+        /**
+         * Aplica la función a los argumentos dados.
+         *
+         * @param args los argumentos de la función
+         * @param interprete el intérprete que ejecuta la función
+         * @return el resultado de evaluar la función
+         * @throws ExcepcionLisp si hay un error durante la evaluación
+         * @throws ExcepcionAtomo si hay un error con el manejo de átomos
+         * @throws ExcepcionContexto si hay un error con el contexto
+         */
         public ExpresionLisp aplicar(List<ExpresionLisp> args, Interprete interprete) throws ExcepcionLisp, ExcepcionAtomo, ExcepcionContexto {
             // Convierte la lista de args a una lista LISP adecuada
             ExpresionLisp listaArgs = simbolo.NULO;
@@ -490,6 +518,7 @@ public void repl() {
             throw new ExcepcionAtomo("No se puede obtener el primer elemento de una función");
         }
 
+
         @Override
         public ExpresionLisp resto() throws ExcepcionAtomo {
             throw new ExcepcionAtomo("No se puede obtener el resto de una función");
@@ -502,7 +531,9 @@ public void repl() {
     }
 
     /**
-     * Método principal.
+     * Método principal que inicia el intérprete.
+     *
+     * @param args argumentos de la línea de comandos (no utilizados)
      */
     public static void main(String[] args) {
         try {
