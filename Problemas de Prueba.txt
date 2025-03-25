@@ -1,0 +1,29 @@
+# Problema 1
+(SET x 20)
+(PRINT x)
+
+## Problema 2
+(SET x (+ 10 (* 3 3) 2 (+ 20 (- 10 5)) ))
+(PRINT x)
+
+## Problema 3
+(defun (evaluar-numero n)
+  (cond
+    ((< n 0) "El número es negativo.")
+    ((= n 0) "El número es cero.")
+    (t "El número es positivo.")))
+
+(evaluar-numero -5)  
+(evaluar-numero 0)   
+(evaluar-numero 7)
+
+## Problema 5
+(DEFUN (factorial n)
+(cond
+	((= n 0) 1)
+	(t (SET resultado (* n (factorial (- n 1))))
+	resultado)))
+;; Ejemplo de uso
+(factorial 5) ;; Devuelve 120
+
+## Problemas porporcionados por el catedratico y restructurados para que sean funcionable y aplicables al programa desarollado. (Cambio de syntaxis)
